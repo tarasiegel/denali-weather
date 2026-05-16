@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: denali-weather-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: DESTINATION_NUMBER
+        sync: false
+      - key: NPS_HOTLINE_NUMBER
+        sync: false
+      - key: NPS_EXTENSION
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: INREACH_EMAIL
+        sync: false

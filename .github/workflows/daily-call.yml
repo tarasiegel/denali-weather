@@ -1,0 +1,23 @@
+name: Daily Denali Weather Call
+
+on:
+  # Runs at 3:00 AM UTC = 7:00 PM Alaska Daylight Time (AKDT, UTC-8)
+  # Adjust this cron to match when the NPS hotline updates its report
+  schedule:
+    - cron: "0 3 * * *"
+
+  # Allow manual runs from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  trigger-weather-call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Denali weather call
+        env:
+          PUBLIC_BASE_URL: ${{ secrets.PUBLIC_BASE_URL }}
+        run: |
+          curl -s -X POST "$PUBLIC_BASE_URL/trigger-call" \
+            -H "Content-Type: application/json" \
+            --fail \
+            | jq .
