@@ -1,6 +1,6 @@
 # 🏔 Denali Weather Bot
 
-Calls the NPS Denali weather hotline daily, transcribes the report via Whisper, and texts it to your phone.
+Calls the NPS Denali weather hotline daily, transcribes the report via Whisper, and texts it to your phone/email, or breaks it up and sends it as multiple messages to a Garmin inReach device.
 
 ## How It Works
 
@@ -11,7 +11,7 @@ GitHub Actions (daily cron)
     → TwiML: pause → press extension → record
     → Twilio POSTs recording URL to /handle-recording
     → Whisper transcribes the audio
-    → Twilio SMS sends transcript to your phone
+    → Twilio SMS sends transcript to your phone or breaks it up and sends it as multiple messages to a Garmin inReach device.
 ```
 
 ## Setup
@@ -34,6 +34,10 @@ cp .env.example .env
 You need accounts with:
 - [Twilio](https://twilio.com) — for calls and SMS (~$0.05/day)
 - [OpenAI](https://platform.openai.com) — for Whisper transcription (~$0.001/day)
+- [ngrok](https://ngrok.com) - for local development (~$0/day)
+- [GitHub Actions](https://github.com/features/actions) - for scheduling (~$0/day)
+- [Render](https://render.com) - for production hosting (~$0/day)
+- [Garmin inReach](https://inreach.garmin.com) - for SMS delivery (~$0/day)
 
 ### 3. Run locally for development
 
@@ -108,8 +112,8 @@ denali-weather/
 
 | Service | Usage | Est. Cost/Day |
 |---|---|---|
-| Twilio outbound call | ~2 min | ~$0.02 |
+| Twilio outbound call | ~6 min | ~$0.06 |
 | Twilio SMS | 1 message | ~$0.008 |
-| OpenAI Whisper | ~2 min audio | ~$0.012 |
+| OpenAI Whisper | ~6 min audio | ~$0.06 |
 | Render hosting | Free tier | $0 |
-| **Total** | | **~$0.04/day** |
+| **Total** | | **~$0.128/day** |
