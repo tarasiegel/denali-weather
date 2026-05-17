@@ -108,8 +108,6 @@ def twiml_instructions():
         action=f"{PUBLIC_BASE_URL}/handle-recording",
         max_length=300,          #5 minutes max
         timeout=10,               # stop after 10s of silence
-        recording_status_callback=f"{PUBLIC_BASE_URL}/handle-recording",
-        recording_status_callback_event=["completed"],
         play_beep=False,
     )
 
