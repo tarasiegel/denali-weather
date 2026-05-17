@@ -37,11 +37,12 @@ OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 # Format: <15-digit-imei>@inreach.garmin.com  (no country code, just the IMEI)
 INREACH_EMAIL = os.environ["INREACH_EMAIL"]
 
-# SMTP config — Gmail shown here; works with any SMTP provider
-SMTP_HOST     = os.environ.get("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT     = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER     = os.environ["SMTP_USER"]      # your Gmail address
-SMTP_PASSWORD = os.environ["SMTP_PASSWORD"]  # Gmail App Password (not your login password)
+# SendGrid — used for email delivery via HTTPS (works on Render free tier)
+# 1. Sign up free at sendgrid.com (100 emails/day free)
+# 2. Settings -> API Keys -> Create API Key (Full Access)
+# 3. Settings -> Sender Authentication -> verify your From email address
+SENDGRID_API_KEY    = os.environ["SENDGRID_API_KEY"]
+SENDGRID_FROM_EMAIL = os.environ["SENDGRID_FROM_EMAIL"]  # must be verified in SendGrid
 
 twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
@@ -175,7 +176,7 @@ async def handle_recording(
     # Format and deliver to inReach
     today = datetime.utcnow().strftime("%b %d, %Y")
     # _send_to_inreach(transcript_text, today)
-    _send_to_email(transcript_text, today)
+    await _send_to_email(transcript_text, today)
 
     # Clean up temp file
     os.unlink(tmp_path)
@@ -185,16 +186,13 @@ async def handle_recording(
 
 # inReach has a 160-character message limit per message.
 INREACH_MSG_LIMIT = 155  # leave a few chars of headroom
-def _send_to_inreach(transcript: str, date_str: str):
-    """
-    Sends the weather report to a Garmin inReach device via the
-    @inreach.garmin.com email gateway.
+SENDGRID_API_URL  = "https://api.sendgrid.com/v3/mail/send"
 
-    inReach caps incoming messages at 160 characters, so we split the
-    transcript into chunks and send each as a separate email.
-    The subject line is ignored by the gateway; only the body is delivered.
+async def _send_to_inreach(transcript: str, date_str: str):
     """
-    # Build chunks that fit within the inReach character limit
+    Sends the weather report to a Garmin inReach via SendGrid's HTTP API.
+    Splits into word-boundary chunks to fit the 160-char inReach limit.
+    """
     words = transcript.split()
     chunks = []
     current = ""
@@ -208,50 +206,70 @@ def _send_to_inreach(transcript: str, date_str: str):
             current = word
     if current:
         chunks.append(current)
-
+ 
     total = len(chunks)
     print(f"Sending {total} message(s) to inReach: {INREACH_EMAIL}")
-
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(SMTP_USER, SMTP_PASSWORD)
-
+ 
+    headers = {
+        "Authorization": f"Bearer {SENDGRID_API_KEY}",
+        "Content-Type": "application/json",
+    }
+ 
+    async with httpx.AsyncClient() as client:
         for i, chunk in enumerate(chunks, start=1):
-            # Prefix first chunk with a short header; subsequent chunks are plain text
             if i == 1 and total == 1:
                 body = f"Denali {date_str}: {chunk}"
             elif i == 1:
                 body = f"Denali {date_str} (1/{total}): {chunk}"
             else:
                 body = f"({i}/{total}): {chunk}"
-
-            msg = MIMEText(body)
-            msg["Subject"] = f"Denali Weather {date_str}"
-            msg["From"]    = SMTP_USER
-            msg["To"]      = INREACH_EMAIL
-
-            server.sendmail(SMTP_USER, INREACH_EMAIL, msg.as_string())
+ 
+            payload = {
+                "personalizations": [{"to": [{"email": INREACH_EMAIL}]}],
+                "from": {"email": SENDGRID_FROM_EMAIL},
+                "subject": f"Denali Weather {date_str}",
+                "content": [{"type": "text/plain", "value": body}],
+            }
+ 
+            resp = await client.post(
+                SENDGRID_API_URL,
+                headers=headers,
+                json=payload,
+                timeout=15,
+            )
+            resp.raise_for_status()
             print(f"  Sent message {i}/{total}: {body[:60]}...")
 
-def _send_to_email(message: str, date_str: str):
-    """
-    Sends the weather report to an email address.
 
-    Args:
-        message: The weather report message.
-        date_str: The date string.
+async def _send_to_email(transcript: str, date_str: str):
     """
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(SMTP_USER, SMTP_PASSWORD)
-        msg = MIMEText(message)
-        msg["Subject"] = f"Denali Weather {date_str}"
-        msg["From"]    = SMTP_USER
-        msg["To"]      = INREACH_EMAIL
-        server.sendmail(SMTP_USER, INREACH_EMAIL, msg.as_string())
-        print(f"  Sent message: {message[:60]}...")
+    Sends the full weather report as a single email (no chunking).
+    Useful for regular email inboxes, not subject to the inReach 160-char limit.
+    """
+ 
+    body = f"Denali National Park Weather Report — {date_str} \n\n {transcript}"
+ 
+    headers = {
+        "Authorization": f"Bearer {SENDGRID_API_KEY}",
+        "Content-Type": "application/json",
+    }
+ 
+    payload = {
+        "personalizations": [{"to": [{"email": INREACH_EMAIL}]}],
+        "from": {"email": SENDGRID_FROM_EMAIL},
+        "subject": f"Denali Weather Report — {date_str}",
+        "content": [{"type": "text/plain", "value": body}],
+    }
+ 
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            SENDGRID_API_URL,
+            headers=headers,
+            json=payload,
+            timeout=15,
+        )
+        resp.raise_for_status()
+        print(f"Full report emailed to {INREACH_EMAIL}")
 
 
 # ---------------------------------------------------------------------------
