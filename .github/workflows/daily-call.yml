@@ -1,10 +1,10 @@
 name: Daily Denali Weather Call
 
 on:
-  # Runs at 3:30 AM UTC = 7:30 PM Alaska Daylight Time (AKDT, UTC-8)
-  # Adjust this cron to match when the NPS hotline updates its report
+  # Runs at 7:30 AM & 7:30 PM Alaska Standard Time (AKST, UTC-9)
   schedule:
-    - cron: "30 3 * * *"
+    - cron: "30 4 * * *"   # 7:30 PM AKST
+    - cron: "30 15 * * *"  # 7:30 AM AKST
 
   # Allow manual runs from the Actions tab
   workflow_dispatch:
