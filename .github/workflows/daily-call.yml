@@ -1,10 +1,10 @@
 name: Daily Denali Weather Call
 
 on:
-  # Runs at 4:30 AM & 4:30 PM AKDT
+  # Runs in the morning and evening AKDT
   schedule:
-    - cron: "30 12 * * *"   # 4:30 AM AKDT (UTC-8)
-    - cron: "30 0 * * *"    # 4:30 PM AKDT (UTC-8)
+    - cron: "30 10 * * *"
+    - cron: "30 22 * * *"
 
   # Allow manual runs from the Actions tab
   workflow_dispatch:
